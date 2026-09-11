@@ -783,7 +783,7 @@ function bindSocketEvents() {
       document.getElementById('gameStatusText').textContent = 'This is your camouflage drawing! Watch your classmates search.';
       const promptBanner = document.querySelector('#guessPromptRibbon .guess-hint-text span');
       if (promptBanner) {
-        promptBanner.textContent = 'This is your disguised figure! Sit back and see how many classmates you can fool.';
+        promptBanner.textContent = 'This is you hiding.';
       }
       chameleonCanvas.setGuessImage(data.imageData, true);
     } else {
