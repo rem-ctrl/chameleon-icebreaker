@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BS-IT/CS GENERAL ASSEMBLY ICEBREAKER</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Fredoka:wght@500;600;700;800&family=Patrick+Hand&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="paper-bg">
+
+  <header class="game-header paper-panel">
+    <div class="logo-container">
+      <h1 class="game-title">BS-IT/CS <span>GENERAL ASSEMBLY ICEBREAKER</span></h1>
+    </div>
+
+    <div class="header-center">
+      <div id="roomCodeBadge" class="paper-tag hidden">
+        <span class="tag-label">ROOM:</span>
+        <span id="headerRoomCode" class="tag-code">----</span>
+        <button id="btnCopyCode" class="mini-paper-btn" title="Copy Room Code">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btnSoundToggle" class="paper-btn icon-btn" title="Toggle Sound">
+        <span id="soundIconSvg">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+        </span>
+        <span class="btn-label-text">SFX</span>
+      </button>
+      <button id="btnHowToPlay" class="paper-btn info-btn" title="Game Rules">
+        <span class="info-symbol">?</span> Rules
+      </button>
+    </div>
+  </header>
+
+  <main class="game-layout">
+    
+    <aside class="sidebar-left paper-panel">
+      <div class="panel-header">
+        <div class="header-icon-wrap">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+          </svg>
+        </div>
+        <h2>PLAYERS</h2>
+        <span id="playerCountBadge" class="count-badge">0/12</span>
+      </div>
+      
+      <div id="playerList" class="scoreboard-list">
+      </div>
+    </aside>
+
+    <section class="center-stage">
+      
+      <div class="game-banner paper-panel">
+        <div class="banner-info">
+          <span id="phasePill" class="phase-pill">LOBBY</span>
+          <h2 id="gameStatusText">Gathering players in lobby...</h2>
+        </div>
+        
+        <div class="timer-wrapper">
+          <div class="timer-container">
+            <div id="timerBarFill" class="timer-bar-fill"></div>
+          </div>
+          <div id="timerClock" class="timer-numeric">0:00</div>
+        </div>
+      </div>
+
+      <div class="canvas-viewport paper-panel" id="canvasViewport">
+        <div class="canvas-container">
+          <canvas id="gameCanvas" width="1920" height="1080"></canvas>
+        </div>
+      </div>
+
+      <div id="bottomControlsContainer" class="bottom-controls-container">
+        
+        <div id="poseRibbon" class="control-ribbon paper-panel hidden">
+          <div class="ribbon-header-row">
+            <div class="ribbon-title-wrap">
+              <span class="step-tag">STEP 1</span>
+              <h3>Choose Pose, Resize &amp; Position</h3>
+            </div>
+            <span class="help-note">Drag figure to move &bull; Use buttons to resize and rotate</span>
+          </div>
+
+          <div class="pose-selection-row">
+            <div class="pose-thumbnails" id="poseCardsContainer">
+            </div>
+            
+            <div class="pose-action-buttons">
+              <div class="pose-scale-group">
+                <button id="btnScaleDown" class="paper-btn small-btn" title="Make Humanoid Smaller">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Smaller
+                </button>
+                <span id="poseScaleDisplay" class="pose-scale-badge">100%</span>
+                <button id="btnScaleUp" class="paper-btn small-btn" title="Make Humanoid Larger">
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Larger
+                </button>
+              </div>
+
+              <button id="btnFlipPose" class="paper-btn small-btn" title="Flip Pose Horizontally">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 3 21 3 21 8"></polyline>
+                  <line x1="4" y1="20" x2="21" y2="3"></line>
+                  <polyline points="21 16 21 21 16 21"></polyline>
+                  <line x1="15" y1="15" x2="21" y2="21"></line>
+                  <line x1="4" y1="4" x2="9" y2="9"></line>
+                </svg>
+                Flip
+              </button>
+              <button id="btnRotatePose" class="paper-btn small-btn" title="Rotate 90 Degrees">
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Rotate
+              </button>
+              <button id="btnLockPoseAndPaint" class="paper-btn action-next-btn success-btn">
+                Lock &amp; Paint &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="drawingToolbar" class="control-ribbon paper-panel hidden">
+          
+          <div class="draw-toolbar-layout">
+            
+            <div class="toolbar-tool-modes">
+              <button id="toolBrush" class="paper-btn tool-btn active" title="Brush (B)">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13.5V5a3 3 0 0 0-6 0v8.5a5.5 5.5 0 0 0 6 0z"></path>
+                  <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+                Brush
+              </button>
+              <button id="toolEraser" class="paper-btn tool-btn" title="Eraser (E)">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"></path>
+                  <line x1="18" y1="12" x2="11" y2="19"></line>
+                </svg>
+                Eraser
+              </button>
+              <button id="toolEyedropper" class="paper-btn tool-btn" title="Eyedropper (I)">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m12 19 7-7 3 3-7 7-3-3z"></path>
+                  <path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18"></path>
+                  <path d="m2 2 7.586 7.586"></path>
+                  <circle cx="11" cy="11" r="2"></circle>
+                </svg>
+                Pick
+              </button>
+              <button id="toolUndo" class="paper-btn tool-btn" title="Undo (Ctrl+Z)">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                Undo
+              </button>
+              <button id="toolClear" class="paper-btn tool-btn danger-btn" title="Clear Paint">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Clear
+              </button>
+            </div>
+
+            <div class="toolbar-palette-area">
+              <div class="palette-swatches-grid" id="colorSwatches">
+              </div>
+              <div class="custom-color-wrap">
+                <input type="color" id="customColorPicker" value="#2d5a27" class="custom-color-input" title="Pick Custom Color">
+                <span class="custom-color-label">Custom</span>
+              </div>
+            </div>
+
+            <div class="toolbar-size-area">
+              <div class="size-buttons-group">
+                <button class="size-preset-btn" data-size="10">S</button>
+                <button class="size-preset-btn active" data-size="24">M</button>
+                <button class="size-preset-btn" data-size="52">L</button>
+                <button class="size-preset-btn" data-size="96">XL</button>
+              </div>
+            </div>
+
+            <div class="toolbar-submit-area">
+              <button id="submitEarlyBtn" class="paper-btn massive-btn success-btn">
+                <div class="btn-content-wrap">
+                  <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span>I'M HIDDEN!</span>
+                </div>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="guessPromptRibbon" class="control-ribbon paper-panel guessing-banner hidden">
+          <div class="guess-hint-text">
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="22" y1="12" x2="18" y2="12"></line>
+              <line x1="6" y1="12" x2="2" y2="12"></line>
+              <line x1="12" y1="6" x2="12" y2="2"></line>
+              <line x1="12" y1="22" x2="12" y2="18"></line>
+            </svg>
+            <span>Click anywhere on the canvas to spot the hidden figure! Faster clicks score more points!</span>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <aside class="sidebar-right paper-panel">
+      <div class="panel-header">
+        <div class="header-icon-wrap">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <h2>ROOM CHAT</h2>
+      </div>
+
+      <div id="chatMessages" class="chat-messages-container">
+      </div>
+
+      <form id="chatForm" class="chat-form">
+        <input type="text" id="chatInput" placeholder="Type a message..." maxlength="150" autocomplete="off">
+        <button type="submit" id="btnSendChat" class="paper-btn send-btn" title="Send Message">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </aside>
+
+  </main>
+
+  <div id="mainMenuOverlay" class="modal-overlay">
+    <div class="modal-card paper-panel cutout-card">
+      <h1 class="menu-title">GENERAL ASSEMBLY <span>ICE BREAKER!</span></h1>
+
+      <div class="menu-grid">
+        
+        <div class="menu-col avatar-col paper-well">
+          <h3>Your Profile</h3>
+          
+          <div class="avatar-preview-box">
+            <div id="avatarPreview" class="custom-avatar-display">
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="playerNameInput">Nickname:</label>
+            <input type="text" id="playerNameInput" class="paper-input" placeholder="Your Name" maxlength="16" value="Player">
+          </div>
+
+          <div class="avatar-customizer-controls">
+            <div class="customizer-label">Avatar Symbol:</div>
+            <div class="avatar-shapes-grid" id="avatarShapesGrid">
+            </div>
+
+            <div class="customizer-label">Avatar Color:</div>
+            <div class="color-buttons-mini" id="avatarColorPickers">
+              <button class="avatar-color-btn active" data-color="#e76f51" style="background:#e76f51;"></button>
+              <button class="avatar-color-btn" data-color="#2a9d8f" style="background:#2a9d8f;"></button>
+              <button class="avatar-color-btn" data-color="#e9c46a" style="background:#e9c46a;"></button>
+              <button class="avatar-color-btn" data-color="#f4a261" style="background:#f4a261;"></button>
+              <button class="avatar-color-btn" data-color="#457b9d" style="background:#457b9d;"></button>
+              <button class="avatar-color-btn" data-color="#8338ec" style="background:#8338ec;"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-col actions-col">
+          
+          <div class="action-card paper-well">
+            <h3>Host New Game</h3>
+            <p>Create a private room for your group and share the 4-letter code.</p>
+            <button id="createRoomBtn" class="paper-btn massive-btn primary-btn">
+              CREATE ROOM
+            </button>
+          </div>
+
+          <div class="action-divider"><span class="divider-text">OR</span></div>
+
+          <div class="action-card paper-well">
+            <h3>Join Friend's Room</h3>
+            <p>Enter the 4-letter code to hop in instantly.</p>
+            <div class="join-input-row">
+              <input type="text" id="joinRoomCodeInput" class="paper-input uppercase-input" placeholder="CODE" maxlength="4">
+              <button id="joinRoomBtn" class="paper-btn action-join-btn success-btn">JOIN</button>
+            </div>
+            <div id="joinErrorMsg" class="error-text hidden"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="lobbyOverlay" class="modal-overlay hidden">
+    <div class="modal-card paper-panel lobby-card">
+      <div class="card-ribbon">GAME LOBBY</div>
+      
+      <div class="lobby-header-section">
+        <div class="room-code-display-box">
+          <span class="code-subtitle">ROOM CODE</span>
+          <h2 id="lobbyCodeText" class="big-room-code">----</h2>
+          <button id="btnLobbyCopyCode" class="paper-btn small-btn">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Code
+          </button>
+        </div>
+      </div>
+
+      <div class="lobby-player-list-section">
+        <h3>Players Joined (<span id="lobbyPlayerCount">1</span>/12)</h3>
+        <div id="lobbyPlayersGrid" class="lobby-players-grid">
+        </div>
+      </div>
+
+      <div class="lobby-footer-section">
+        <p id="lobbyStatusMsg" class="lobby-status">Waiting for host to start...</p>
+        <button id="startGameBtn" class="paper-btn massive-btn primary-btn hidden">
+          START GAME!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="howToPlayOverlay" class="modal-overlay hidden">
+    <div class="modal-card paper-panel rules-card">
+      <div class="card-ribbon">HOW TO PLAY</div>
+      <h2>Rulebook &amp; Scoring</h2>
+      <div class="rules-grid">
+        <div class="rule-step paper-well">
+          <div class="step-num">1</div>
+          <h4>Pose, Resize &amp; Disguise</h4>
+          <p>Choose 1 of 6 poses. Resize with Smaller/Larger buttons, drag anywhere on the 1080p canvas, and paint over your humanoid to camouflage it into the scenery!</p>
+        </div>
+        <div class="rule-step paper-well">
+          <div class="step-num">2</div>
+          <h4>Race to Spot</h4>
+          <p>Everyone's camouflage is shown one-by-one. Click as fast as you can where you think the figure is hiding!</p>
+        </div>
+        <div class="rule-step paper-well">
+          <div class="step-num">3</div>
+          <h4>Score Huge Points</h4>
+          <p><strong>Spotters:</strong> Faster finds earn up to 400 pts (+100 for 1st place).<br><strong>Artists:</strong> If your disguise tricks players, you earn up to 400 camouflage bonus points!</p>
+        </div>
+      </div>
+      <div class="modal-actions-center">
+        <button id="btnCloseRules" class="paper-btn primary-btn">GOT IT!</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="podiumOverlay" class="modal-overlay hidden">
+    <div class="modal-card paper-panel podium-card">
+      <div class="card-ribbon">MATCH RESULTS</div>
+      <h1 class="podium-title">VICTORY PODIUM!</h1>
+
+      <div class="podium-display" id="podiumStand">
+      </div>
+
+      <div class="full-standings paper-well">
+        <h3>Final Standings</h3>
+        <div id="podiumRankingsTable" class="standings-list">
+        </div>
+      </div>
+
+      <div class="podium-footer">
+        <button id="playAgainBtn" class="paper-btn massive-btn primary-btn hidden">
+          PLAY AGAIN
+        </button>
+        <p id="podiumWaitingMsg" class="lobby-status">Waiting for host to restart...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/scenes.js"></script>
+  <script src="js/canvas.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
