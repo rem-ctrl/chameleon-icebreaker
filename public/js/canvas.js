@@ -78,6 +78,7 @@ class ChameleonCanvas {
     this.guessCooldownUntil = 0;
     this.isArtistDrawing = false;
     this.hasFound = false;
+    this.isEyedropping = false;
 
     this.initPoses();
     this.bindEvents();
@@ -304,6 +305,7 @@ class ChameleonCanvas {
         }
       } else if (this.mode === 'PAINT') {
         if (this.tool === 'eyedropper') {
+          this.isEyedropping = true;
           this.sampleColor(pos.x, pos.y);
         } else {
           this.isDrawing = true;
@@ -336,12 +338,18 @@ class ChameleonCanvas {
         this.pose.x = Math.max(80, Math.min(this.width - 80, pos.x - this.pose.dragOffsetX));
         this.pose.y = Math.max(80, Math.min(this.height - 80, pos.y - this.pose.dragOffsetY));
         this.render();
-      } else if (this.mode === 'PAINT' && this.isDrawing) {
-        if (e.cancelable) e.preventDefault();
-        const pos = this.getCanvasCoordinates(e);
-        this.drawStroke(this.lastX, this.lastY, pos.x, pos.y);
-        this.lastX = pos.x;
-        this.lastY = pos.y;
+      } else if (this.mode === 'PAINT') {
+        if (this.isEyedropping) {
+          if (e.cancelable) e.preventDefault();
+          const pos = this.getCanvasCoordinates(e);
+          this.sampleColor(pos.x, pos.y);
+        } else if (this.isDrawing) {
+          if (e.cancelable) e.preventDefault();
+          const pos = this.getCanvasCoordinates(e);
+          this.drawStroke(this.lastX, this.lastY, pos.x, pos.y);
+          this.lastX = pos.x;
+          this.lastY = pos.y;
+        }
       }
     };
 
@@ -349,10 +357,15 @@ class ChameleonCanvas {
       if (this.mode === 'POSE' && this.pose.isDragging) {
         this.pose.isDragging = false;
         if (e.cancelable && e.target === this.canvas) e.preventDefault();
-      } else if (this.mode === 'PAINT' && this.isDrawing) {
-        this.isDrawing = false;
-        this.saveState();
-        if (e.cancelable && e.target === this.canvas) e.preventDefault();
+      } else if (this.mode === 'PAINT') {
+        if (this.isEyedropping) {
+          this.isEyedropping = false;
+          if (e.cancelable && e.target === this.canvas) e.preventDefault();
+        } else if (this.isDrawing) {
+          this.isDrawing = false;
+          this.saveState();
+          if (e.cancelable && e.target === this.canvas) e.preventDefault();
+        }
       }
     };
 
@@ -399,11 +412,22 @@ class ChameleonCanvas {
   }
 
   sampleColor(x, y) {
-    const pixel = this.ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    const hex = '#' + ((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1);
+    const clampedX = Math.max(0, Math.min(this.width - 1, Math.floor(x)));
+    const clampedY = Math.max(0, Math.min(this.height - 1, Math.floor(y)));
+
+    let pixel = this.ctx.getImageData(clampedX, clampedY, 1, 1).data;
+    if (pixel[3] === 0) {
+      pixel = this.bgCtx.getImageData(clampedX, clampedY, 1, 1).data;
+    }
+
+    const r = pixel[0];
+    const g = pixel[1];
+    const b = pixel[2];
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+
     this.brushColor = hex;
-    if (this.onColorPicked) this.onColorPicked(hex);
     this.tool = 'brush';
+    if (this.onColorPicked) this.onColorPicked(hex);
     if (this.onToolChange) this.onToolChange('brush');
     if (window.audioManager) window.audioManager.playClick();
   }

@@ -182,6 +182,24 @@ function initDrawingTools() {
     submitMyPainting();
   });
 
+  chameleonCanvas.onColorPicked = (hex) => {
+    const customPicker = document.getElementById('customColorPicker');
+    if (customPicker) customPicker.value = hex;
+
+    document.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.remove('active');
+    });
+
+    const statusText = document.getElementById('gameStatusText');
+    if (statusText && chameleonCanvas.mode === 'PAINT') {
+      statusText.textContent = `Sampled color: ${hex.toUpperCase()}! Ready to paint.`;
+    }
+  };
+
+  chameleonCanvas.onToolChange = (tool) => {
+    updateToolButtons(tool);
+  };
+
   function updateBrushSize(sz) {
     chameleonCanvas.brushSize = sz;
   }
