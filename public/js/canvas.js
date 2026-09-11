@@ -79,6 +79,7 @@ class ChameleonCanvas {
     this.isArtistDrawing = false;
     this.hasFound = false;
     this.isEyedropping = false;
+    this.isSubmitted = false;
 
     this.initPoses();
     this.bindEvents();
@@ -304,6 +305,7 @@ class ChameleonCanvas {
           this.pose.dragOffsetY = pos.y - this.pose.y;
         }
       } else if (this.mode === 'PAINT') {
+        if (this.isSubmitted) return;
         if (this.tool === 'eyedropper') {
           this.isEyedropping = true;
           this.sampleColor(pos.x, pos.y);
@@ -339,6 +341,7 @@ class ChameleonCanvas {
         this.pose.y = Math.max(80, Math.min(this.height - 80, pos.y - this.pose.dragOffsetY));
         this.render();
       } else if (this.mode === 'PAINT') {
+        if (this.isSubmitted) return;
         if (this.isEyedropping) {
           if (e.cancelable) e.preventDefault();
           const pos = this.getCanvasCoordinates(e);
@@ -389,6 +392,7 @@ class ChameleonCanvas {
   }
 
   drawStroke(x1, y1, x2, y2) {
+    if (this.isSubmitted) return;
     this.paintCtx.save();
     this.paintCtx.lineCap = 'round';
     this.paintCtx.lineJoin = 'round';
@@ -412,6 +416,7 @@ class ChameleonCanvas {
   }
 
   sampleColor(x, y) {
+    if (this.isSubmitted) return;
     const clampedX = Math.max(0, Math.min(this.width - 1, Math.floor(x)));
     const clampedY = Math.max(0, Math.min(this.height - 1, Math.floor(y)));
 
@@ -440,6 +445,7 @@ class ChameleonCanvas {
   }
 
   undo() {
+    if (this.isSubmitted) return;
     if (this.undoStack.length <= 1) {
       this.clearPaint();
       return;
@@ -456,6 +462,7 @@ class ChameleonCanvas {
   }
 
   redo() {
+    if (this.isSubmitted) return;
     if (this.redoStack.length === 0) return;
     const next = this.redoStack.pop();
     this.undoStack.push(next);
@@ -469,12 +476,14 @@ class ChameleonCanvas {
   }
 
   clearPaint() {
+    if (this.isSubmitted) return;
     this.paintCtx.clearRect(0, 0, this.width, this.height);
     this.saveState();
     this.render();
   }
 
   resetAll(bgImageUrlOrSceneId) {
+    this.isSubmitted = false;
     this.pose.locked = false;
     this.pose.x = 960;
     this.pose.y = 540;

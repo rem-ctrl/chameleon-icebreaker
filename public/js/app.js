@@ -570,6 +570,15 @@ function bindSocketEvents() {
     document.getElementById('drawingToolbar').classList.add('hidden');
     document.getElementById('guessPromptRibbon').classList.add('hidden');
 
+    // Re-enable drawing tools for new match
+    document.querySelectorAll('#drawingToolbar button').forEach(btn => {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    });
+    const customPicker = document.getElementById('customColorPicker');
+    if (customPicker) customPicker.disabled = false;
+
     document.getElementById('phasePill').textContent = 'POSE';
     document.getElementById('gameStatusText').textContent = 'Drag & pose your figure on the canvas';
 
@@ -716,7 +725,23 @@ function submitMyPainting() {
     submitBtn.textContent = 'Submitted!';
     submitBtn.disabled = true;
   }
+  chameleonCanvas.isSubmitted = true;
   chameleonCanvas.lockPose();
+
+  // Disable drawing toolbar buttons and inputs
+  document.querySelectorAll('#drawingToolbar button').forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.pointerEvents = 'none';
+  });
+  const customPicker = document.getElementById('customColorPicker');
+  if (customPicker) customPicker.disabled = true;
+
+  const statusText = document.getElementById('gameStatusText');
+  if (statusText) {
+    statusText.textContent = 'Disguise submitted! Waiting for other players...';
+  }
+
   const imageData = chameleonCanvas.getCombinedImage();
   const poseData = chameleonCanvas.getNormalizedPoseData();
 
