@@ -542,11 +542,11 @@ body.paper-bg {
 
 .canvas-container {
   position: relative;
-  width: 100%;
-  height: 100%;
+  aspect-ratio: 16 / 9;
   max-width: 100%;
   max-height: 100%;
-  aspect-ratio: 16 / 9;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -555,15 +555,15 @@ body.paper-bg {
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: #ffffff;
+  touch-action: none;
 }
 
 #gameCanvas {
   width: 100%;
   height: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: contain;
   display: block;
   cursor: crosshair;
+  touch-action: none;
 }
 
 /* Bottom Controls */
@@ -2026,73 +2026,8 @@ button,
   color: #ffffff;
 }
 
-.hub-streamer-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: #f0ece1;
-  border: 1.5px solid var(--border-color);
-  border-radius: 20px;
-  padding: 6px 14px;
-}
-
-/* Finder Live Ticker Overlay */
-.finder-ticker-container {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 55;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-  max-width: 340px;
-}
-
-.finder-ticker-chip {
-  background: #ffffff;
-  border: var(--border-thick);
-  border-radius: 24px;
-  padding: 8px 14px;
-  font-family: var(--font-main);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-main);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: none;
-  animation: tickerSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-.finder-ticker-chip.fade-out {
-  opacity: 0;
-  transform: translateX(30px);
-}
-
-.ticker-trophy-star {
-  color: var(--accent);
-  font-size: 16px;
-  line-height: 1;
-}
-
 .player-status-badge.spectator {
   background: var(--info);
   color: #ffffff;
-}
-
-@keyframes tickerSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
 }
 

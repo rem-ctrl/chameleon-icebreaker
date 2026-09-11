@@ -775,10 +775,6 @@ function bindSocketEvents() {
     if (window.audioManager) window.audioManager.playPop();
   });
 
-  socket.on('player_found', (data) => {
-    showFinderTicker(data);
-  });
-
   socket.on('guess_feedback', (fb) => {
     if (fb.success) {
       if (chameleonCanvas) chameleonCanvas.hasFound = true;
@@ -838,28 +834,6 @@ function bindSocketEvents() {
   socket.on('chat_message', (msg) => {
     appendChatMessage(msg);
   });
-}
-
-function showFinderTicker(data) {
-  const container = document.getElementById('finderTickerContainer');
-  if (!container) return;
-
-  const chip = document.createElement('div');
-  chip.className = 'finder-ticker-chip';
-  chip.innerHTML = `
-    <span class="ticker-trophy-star">&#x2605;</span>
-    <span><b>${escapeHTML(data.finderName)}</b> found it! (#${data.rank} Place, +${data.points} pts)</span>
-  `;
-  container.appendChild(chip);
-
-  if (window.audioManager) window.audioManager.playPop();
-
-  setTimeout(() => {
-    chip.classList.add('fade-out');
-    setTimeout(() => {
-      if (chip.parentNode) chip.parentNode.removeChild(chip);
-    }, 400);
-  }, 3200);
 }
 
 function updateSpectatorHub(roomData) {

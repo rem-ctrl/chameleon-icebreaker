@@ -337,6 +337,7 @@ class ChameleonCanvas {
 
   getCanvasCoordinates(e) {
     const rect = this.canvas.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
     const scaleX = this.width / rect.width;
     const scaleY = this.height / rect.height;
 
