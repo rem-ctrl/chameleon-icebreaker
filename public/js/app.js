@@ -182,6 +182,31 @@ function initDrawingTools() {
     submitMyPainting();
   });
 
+  // Mobile Zoom Widget Controls
+  const zoomInBtn = document.getElementById('btnZoomIn');
+  const zoomOutBtn = document.getElementById('btnZoomOut');
+  const zoomResetBtn = document.getElementById('btnZoomReset');
+  const zoomDisplay = document.getElementById('zoomLevelDisplay');
+
+  if (zoomInBtn) zoomInBtn.addEventListener('click', () => {
+    chameleonCanvas.zoomIn(0.5);
+    if (window.audioManager) window.audioManager.playClick();
+  });
+
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => {
+    chameleonCanvas.zoomOut(0.5);
+    if (window.audioManager) window.audioManager.playClick();
+  });
+
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => {
+    chameleonCanvas.resetZoom();
+    if (window.audioManager) window.audioManager.playClick();
+  });
+
+  chameleonCanvas.onZoomChange = (zm) => {
+    if (zoomDisplay) zoomDisplay.textContent = zm.toFixed(1) + 'x';
+  };
+
   chameleonCanvas.onColorPicked = (hex) => {
     const customPicker = document.getElementById('customColorPicker');
     if (customPicker) customPicker.value = hex;
@@ -292,6 +317,8 @@ function initPoseControls() {
     chameleonCanvas.lockPose();
     document.getElementById('poseRibbon').classList.add('hidden');
     document.getElementById('drawingToolbar').classList.remove('hidden');
+    const zoomWidget = document.getElementById('mobileZoomWidget');
+    if (zoomWidget) zoomWidget.classList.remove('hidden');
     document.getElementById('phasePill').textContent = 'PAINT';
     document.getElementById('gameStatusText').textContent = 'Paint over your humanoid figure to camouflage it!';
     if (window.audioManager) window.audioManager.playSuccess();
@@ -569,6 +596,8 @@ function bindSocketEvents() {
     document.getElementById('poseRibbon').classList.remove('hidden');
     document.getElementById('drawingToolbar').classList.add('hidden');
     document.getElementById('guessPromptRibbon').classList.add('hidden');
+    const zoomWidget = document.getElementById('mobileZoomWidget');
+    if (zoomWidget) zoomWidget.classList.add('hidden');
 
     // Re-enable drawing tools for new match
     document.querySelectorAll('#drawingToolbar button').forEach(btn => {
@@ -634,6 +663,8 @@ function bindSocketEvents() {
     document.getElementById('poseRibbon').classList.add('hidden');
     document.getElementById('drawingToolbar').classList.add('hidden');
     document.getElementById('guessPromptRibbon').classList.remove('hidden');
+    const zoomWidget = document.getElementById('mobileZoomWidget');
+    if (zoomWidget) zoomWidget.classList.add('hidden');
 
     const isMyDrawing = data.artistId === socket.id;
 
@@ -686,6 +717,8 @@ function bindSocketEvents() {
     document.getElementById('poseRibbon').classList.add('hidden');
     document.getElementById('drawingToolbar').classList.add('hidden');
     document.getElementById('guessPromptRibbon').classList.add('hidden');
+    const zoomWidget = document.getElementById('mobileZoomWidget');
+    if (zoomWidget) zoomWidget.classList.add('hidden');
     document.getElementById('phasePill').textContent = 'FINISH';
     document.getElementById('gameStatusText').textContent = 'Match Completed!';
 
@@ -727,6 +760,8 @@ function submitMyPainting() {
   }
   chameleonCanvas.isSubmitted = true;
   chameleonCanvas.lockPose();
+  const zoomWidget = document.getElementById('mobileZoomWidget');
+  if (zoomWidget) zoomWidget.classList.add('hidden');
 
   // Disable drawing toolbar buttons and inputs
   document.querySelectorAll('#drawingToolbar button').forEach(btn => {

@@ -81,6 +81,17 @@ class ChameleonCanvas {
     this.isEyedropping = false;
     this.isSubmitted = false;
 
+    // Mobile Zoom & Pan State (Active in PAINT mode)
+    this.zoom = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.isPinching = false;
+    this.onZoomChange = null;
+    this.startPinchDist = 0;
+    this.startPinchZoom = 1.0;
+    this.startPinchModelX = 0;
+    this.startPinchModelY = 0;
+
     this.initPoses();
     this.bindEvents();
     this.resize();
@@ -268,6 +279,51 @@ class ChameleonCanvas {
     };
   }
 
+  clampPan() {
+    if (this.zoom <= 1.0) {
+      this.zoom = 1.0;
+      this.panX = 0;
+      this.panY = 0;
+      return;
+    }
+    const minPanX = this.width - (this.width * this.zoom);
+    const minPanY = this.height - (this.height * this.zoom);
+    this.panX = Math.min(0, Math.max(minPanX, this.panX));
+    this.panY = Math.min(0, Math.max(minPanY, this.panY));
+  }
+
+  setZoom(newZoom, centerX = this.width / 2, centerY = this.height / 2) {
+    const oldZoom = this.zoom;
+    newZoom = Math.max(1.0, Math.min(3.5, Math.round(newZoom * 10) / 10));
+    if (newZoom === oldZoom) return;
+
+    const modelX = (centerX - this.panX) / oldZoom;
+    const modelY = (centerY - this.panY) / oldZoom;
+
+    this.zoom = newZoom;
+    this.panX = centerX - modelX * newZoom;
+    this.panY = centerY - modelY * newZoom;
+    this.clampPan();
+    this.render();
+    if (this.onZoomChange) this.onZoomChange(this.zoom);
+  }
+
+  zoomIn(delta = 0.5) {
+    this.setZoom(this.zoom + delta);
+  }
+
+  zoomOut(delta = 0.5) {
+    this.setZoom(this.zoom - delta);
+  }
+
+  resetZoom() {
+    this.zoom = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.render();
+    if (this.onZoomChange) this.onZoomChange(this.zoom);
+  }
+
   getCanvasCoordinates(e) {
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.width / rect.width;
@@ -284,9 +340,19 @@ class ChameleonCanvas {
       clientY = e.changedTouches[0].clientY;
     }
 
+    const viewX = (clientX - rect.left) * scaleX;
+    const viewY = (clientY - rect.top) * scaleY;
+
+    if (this.zoom > 1.0) {
+      return {
+        x: (viewX - this.panX) / this.zoom,
+        y: (viewY - this.panY) / this.zoom
+      };
+    }
+
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY
+      x: viewX,
+      y: viewY
     };
   }
 
@@ -295,6 +361,33 @@ class ChameleonCanvas {
       if (e.cancelable && (e.target === this.canvas || e.type === 'touchstart')) {
         e.preventDefault();
       }
+
+      // Handle 2-finger pinch/pan start during PAINT mode
+      if (e.touches && e.touches.length === 2 && this.mode === 'PAINT' && !this.isSubmitted) {
+        this.isDrawing = false;
+        this.isEyedropping = false;
+        this.isPinching = true;
+
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        this.startPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        this.startPinchZoom = this.zoom;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.width / rect.width;
+        const scaleY = this.height / rect.height;
+        const midScreenX = (t1.clientX + t2.clientX) / 2;
+        const midScreenY = (t1.clientY + t2.clientY) / 2;
+        const viewMidX = (midScreenX - rect.left) * scaleX;
+        const viewMidY = (midScreenY - rect.top) * scaleY;
+
+        this.startPinchModelX = (viewMidX - this.panX) / this.zoom;
+        this.startPinchModelY = (viewMidY - this.panY) / this.zoom;
+        return;
+      }
+
+      if (e.touches && e.touches.length > 1) return;
+
       const pos = this.getCanvasCoordinates(e);
 
       if (this.mode === 'POSE' && !this.pose.locked) {
@@ -334,6 +427,35 @@ class ChameleonCanvas {
     };
 
     const onMove = (e) => {
+      // Handle 2-finger pinch/pan move during PAINT mode
+      if (e.touches && e.touches.length === 2 && this.mode === 'PAINT' && !this.isSubmitted) {
+        if (e.cancelable) e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+        if (this.startPinchDist > 0) {
+          const factor = dist / this.startPinchDist;
+          const newZoom = Math.max(1.0, Math.min(3.5, this.startPinchZoom * factor));
+
+          const rect = this.canvas.getBoundingClientRect();
+          const scaleX = this.width / rect.width;
+          const scaleY = this.height / rect.height;
+          const midScreenX = (t1.clientX + t2.clientX) / 2;
+          const midScreenY = (t1.clientY + t2.clientY) / 2;
+          const currMidX = (midScreenX - rect.left) * scaleX;
+          const currMidY = (midScreenY - rect.top) * scaleY;
+
+          this.zoom = newZoom;
+          this.panX = currMidX - this.startPinchModelX * newZoom;
+          this.panY = currMidY - this.startPinchModelY * newZoom;
+          this.clampPan();
+          this.render();
+          if (this.onZoomChange) this.onZoomChange(this.zoom);
+        }
+        return;
+      }
+
       if (this.mode === 'POSE' && this.pose.isDragging) {
         if (e.cancelable) e.preventDefault();
         const pos = this.getCanvasCoordinates(e);
@@ -341,7 +463,7 @@ class ChameleonCanvas {
         this.pose.y = Math.max(80, Math.min(this.height - 80, pos.y - this.pose.dragOffsetY));
         this.render();
       } else if (this.mode === 'PAINT') {
-        if (this.isSubmitted) return;
+        if (this.isSubmitted || this.isPinching) return;
         if (this.isEyedropping) {
           if (e.cancelable) e.preventDefault();
           const pos = this.getCanvasCoordinates(e);
@@ -357,6 +479,19 @@ class ChameleonCanvas {
     };
 
     const onEnd = (e) => {
+      if (this.isPinching) {
+        if (!e.touches || e.touches.length < 2) {
+          this.isPinching = false;
+          this.startPinchDist = 0;
+          if (e.touches && e.touches.length === 1) {
+            const pos = this.getCanvasCoordinates(e.touches[0]);
+            this.lastX = pos.x;
+            this.lastY = pos.y;
+          }
+        }
+        return;
+      }
+
       if (this.mode === 'POSE' && this.pose.isDragging) {
         this.pose.isDragging = false;
         if (e.cancelable && e.target === this.canvas) e.preventDefault();
@@ -420,7 +555,7 @@ class ChameleonCanvas {
     const clampedX = Math.max(0, Math.min(this.width - 1, Math.floor(x)));
     const clampedY = Math.max(0, Math.min(this.height - 1, Math.floor(y)));
 
-    let pixel = this.ctx.getImageData(clampedX, clampedY, 1, 1).data;
+    let pixel = this.figureCtx.getImageData(clampedX, clampedY, 1, 1).data;
     if (pixel[3] === 0) {
       pixel = this.bgCtx.getImageData(clampedX, clampedY, 1, 1).data;
     }
@@ -484,6 +619,7 @@ class ChameleonCanvas {
 
   resetAll(bgImageUrlOrSceneId) {
     this.isSubmitted = false;
+    this.resetZoom();
     this.pose.locked = false;
     this.pose.x = 960;
     this.pose.y = 540;
@@ -526,6 +662,7 @@ class ChameleonCanvas {
   }
 
   setGuessImage(dataUrl, isArtist = false) {
+    this.resetZoom();
     this.guessCooldownUntil = 0;
     this.clickMarkers = [];
     this.isArtistDrawing = isArtist;
@@ -540,6 +677,7 @@ class ChameleonCanvas {
   }
 
   setRevealData(poseData) {
+    this.resetZoom();
     this.revealPoseData = poseData;
     this.setMode('REVEAL');
     this.render();
@@ -609,35 +747,50 @@ class ChameleonCanvas {
       return;
     }
 
-    // 1. Draw Clean Background Scenery
-    this.ctx.drawImage(this.bgCanvas, 0, 0);
+    if (this.zoom > 1.0 && this.mode === 'PAINT') {
+      this.ctx.save();
+      this.ctx.translate(this.panX, this.panY);
+      this.ctx.scale(this.zoom, this.zoom);
 
-    // 2. If POSE mode (not yet locked), draw interactive pose over background with guides
-    if (this.mode === 'POSE' && !this.pose.locked) {
-      const img = this.poseImages[this.pose.id];
-      if (img) {
-        this.ctx.save();
-        this.ctx.translate(this.pose.x, this.pose.y);
-        this.ctx.rotate(this.pose.rotation * Math.PI / 180);
-        this.ctx.scale(this.pose.flipX ? -this.pose.scale : this.pose.scale, this.pose.scale);
+      // 1. Draw Clean Background Scenery
+      this.ctx.drawImage(this.bgCanvas, 0, 0);
 
-        const targetH = this.baseFigureHeight;
-        const targetW = (img.width / img.height) * targetH;
-
-        this.ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
-
-        // Cutout dashed placement bounding guide
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 4;
-        this.ctx.setLineDash([12, 8]);
-        this.ctx.strokeRect(-targetW / 2 - 8, -targetH / 2 - 8, targetW + 16, targetH + 16);
-
-        this.ctx.restore();
-      }
-    } else {
-      // In PAINT mode: Composite Figure + Clipped Paint
+      // 2. Composite Figure + Clipped Paint
       this.updateFigureLayer();
       this.ctx.drawImage(this.figureCanvas, 0, 0);
+
+      this.ctx.restore();
+    } else {
+      // 1. Draw Clean Background Scenery
+      this.ctx.drawImage(this.bgCanvas, 0, 0);
+
+      // 2. If POSE mode (not yet locked), draw interactive pose over background with guides
+      if (this.mode === 'POSE' && !this.pose.locked) {
+        const img = this.poseImages[this.pose.id];
+        if (img) {
+          this.ctx.save();
+          this.ctx.translate(this.pose.x, this.pose.y);
+          this.ctx.rotate(this.pose.rotation * Math.PI / 180);
+          this.ctx.scale(this.pose.flipX ? -this.pose.scale : this.pose.scale, this.pose.scale);
+
+          const targetH = this.baseFigureHeight;
+          const targetW = (img.width / img.height) * targetH;
+
+          this.ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
+
+          // Cutout dashed placement bounding guide
+          this.ctx.strokeStyle = '#ffffff';
+          this.ctx.lineWidth = 4;
+          this.ctx.setLineDash([12, 8]);
+          this.ctx.strokeRect(-targetW / 2 - 8, -targetH / 2 - 8, targetW + 16, targetH + 16);
+
+          this.ctx.restore();
+        }
+      } else {
+        // In PAINT mode: Composite Figure + Clipped Paint
+        this.updateFigureLayer();
+        this.ctx.drawImage(this.figureCanvas, 0, 0);
+      }
     }
   }
 
