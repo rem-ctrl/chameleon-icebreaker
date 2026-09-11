@@ -806,7 +806,7 @@ function updateScoreboard(roomData) {
   if (!list) return;
 
   if (countBadge) {
-    countBadge.textContent = roomData.players.length + '/12';
+    countBadge.textContent = roomData.players.length + '/20';
   }
 
   list.innerHTML = '';

@@ -186,8 +186,8 @@ io.on('connection', (socket) => {
       if (typeof callback === 'function') callback({ success: false, message: 'Game already in progress!' });
       return;
     }
-    if (room.players.size >= 12) {
-      if (typeof callback === 'function') callback({ success: false, message: 'Room is full (max 12 players)!' });
+    if (room.players.size >= 20) {
+      if (typeof callback === 'function') callback({ success: false, message: 'Room is full (max 20 players)!' });
       return;
     }
 
