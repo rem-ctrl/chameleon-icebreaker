@@ -450,14 +450,41 @@ function initScenePicker() {
 function initChat() {
   const form = document.getElementById('chatForm');
   const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('btnSendChat');
 
-  if (form && input) {
+  const sendMessage = () => {
+    if (!input) return;
+    const text = input.value.trim();
+    if (text) {
+      socket.emit('send_chat', {
+        text,
+        roomCode: currentRoom ? currentRoom.code : null,
+        playerName: myProfile ? myProfile.name : 'Player',
+        avatar: myProfile ? myProfile.avatar : null
+      });
+      input.value = '';
+    }
+  };
+
+  if (form) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const text = input.value.trim();
-      if (text) {
-        socket.emit('send_chat', { text });
-        input.value = '';
+      sendMessage();
+    });
+  }
+
+  if (sendBtn) {
+    sendBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+  }
+
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
       }
     });
   }

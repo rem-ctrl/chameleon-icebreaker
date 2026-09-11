@@ -633,12 +633,23 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_chat', (data) => {
-    if (!currentRoomCode) return;
-    const room = rooms.get(currentRoomCode);
+    let roomCode = currentRoomCode || (data && data.roomCode);
+    if (!roomCode) {
+      for (const [code, r] of rooms.entries()) {
+        if (r.players.has(socket.id)) {
+          roomCode = code;
+          currentRoomCode = code;
+          break;
+        }
+      }
+    }
+    if (!roomCode) return;
+    const room = rooms.get(roomCode);
     if (!room) return;
 
     const player = room.players.get(socket.id);
-    if (!player) return;
+    const playerName = player ? player.name : ((data && (data.playerName || data.name)) || 'Player');
+    const playerAvatar = player ? player.avatar : ((data && data.avatar) || { color: '#e76f51', shape: 'star' });
 
     const rawText = (typeof data === 'string') ? data : (data && data.text);
     const text = (rawText ? String(rawText).trim().substring(0, 150) : '');
@@ -646,8 +657,8 @@ io.on('connection', (socket) => {
 
     io.to(room.code).emit('chat_message', {
       senderId: socket.id,
-      senderName: player.name,
-      avatar: player.avatar,
+      senderName: playerName,
+      avatar: playerAvatar,
       text: text
     });
   });
