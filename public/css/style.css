@@ -1507,10 +1507,30 @@ body.paper-bg {
   margin-top: 6px;
 }
 
+button,
+.paper-btn,
+.pose-card-btn,
+.color-swatch,
+.avatar-shape-btn,
+.avatar-color-btn,
+.size-preset-btn,
+.tool-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+#gameCanvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 1024px) {
   .game-layout {
-    grid-template-columns: 220px 1fr 240px;
+    grid-template-columns: 220px minmax(0, 1fr) 240px;
     gap: 10px;
   }
   .palette-swatches-grid {
@@ -1519,18 +1539,88 @@ body.paper-bg {
 }
 
 @media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .game-header {
+    padding: 8px 12px;
+  }
+
+  .game-title {
+    font-size: 15px;
+  }
+
   .game-layout {
     display: flex;
     flex-direction: column;
     height: auto;
+    max-height: none;
+    overflow: visible;
+    margin: 0 8px 14px 8px;
+    gap: 10px;
   }
+
   .sidebar-left, .sidebar-right {
-    height: 200px;
+    height: auto;
+    max-height: 220px;
+    padding: 10px;
   }
+
+  .canvas-viewport {
+    min-height: 220px;
+    padding: 6px;
+  }
+
   .menu-grid,
   .lobby-header-section,
   .scene-cards-grid,
   .rules-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .draw-toolbar-layout {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .toolbar-tool-modes,
+  .toolbar-palette-area,
+  .toolbar-size-area,
+  .toolbar-submit-area {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .palette-swatches-grid {
+    grid-template-columns: repeat(12, 18px);
+  }
+
+  .pose-selection-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pose-thumbnails {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pose-action-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .modal-card {
+    padding: 28px 16px 20px 16px;
+  }
+
+  .modal-overlay {
+    padding: 24px 10px 14px 10px;
   }
 }

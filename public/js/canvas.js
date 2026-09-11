@@ -277,6 +277,9 @@ class ChameleonCanvas {
     if (e.touches && e.touches.length > 0) {
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
     }
 
     return {
@@ -287,7 +290,9 @@ class ChameleonCanvas {
 
   bindEvents() {
     const onStart = (e) => {
-      e.preventDefault();
+      if (e.cancelable && (e.target === this.canvas || e.type === 'touchstart')) {
+        e.preventDefault();
+      }
       const pos = this.getCanvasCoordinates(e);
 
       if (this.mode === 'POSE' && !this.pose.locked) {
@@ -325,14 +330,15 @@ class ChameleonCanvas {
     };
 
     const onMove = (e) => {
-      e.preventDefault();
-      const pos = this.getCanvasCoordinates(e);
-
       if (this.mode === 'POSE' && this.pose.isDragging) {
+        if (e.cancelable) e.preventDefault();
+        const pos = this.getCanvasCoordinates(e);
         this.pose.x = Math.max(80, Math.min(this.width - 80, pos.x - this.pose.dragOffsetX));
         this.pose.y = Math.max(80, Math.min(this.height - 80, pos.y - this.pose.dragOffsetY));
         this.render();
       } else if (this.mode === 'PAINT' && this.isDrawing) {
+        if (e.cancelable) e.preventDefault();
+        const pos = this.getCanvasCoordinates(e);
         this.drawStroke(this.lastX, this.lastY, pos.x, pos.y);
         this.lastX = pos.x;
         this.lastY = pos.y;
@@ -340,12 +346,13 @@ class ChameleonCanvas {
     };
 
     const onEnd = (e) => {
-      e.preventDefault();
-      if (this.mode === 'POSE') {
+      if (this.mode === 'POSE' && this.pose.isDragging) {
         this.pose.isDragging = false;
+        if (e.cancelable && e.target === this.canvas) e.preventDefault();
       } else if (this.mode === 'PAINT' && this.isDrawing) {
         this.isDrawing = false;
         this.saveState();
+        if (e.cancelable && e.target === this.canvas) e.preventDefault();
       }
     };
 
@@ -355,7 +362,8 @@ class ChameleonCanvas {
 
     this.canvas.addEventListener('touchstart', onStart, { passive: false });
     window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onEnd, { passive: false });
+    window.addEventListener('touchend', onEnd, { passive: true });
+    window.addEventListener('touchcancel', onEnd, { passive: true });
 
     // Mouse wheel resizing in POSE mode
     this.canvas.addEventListener('wheel', (e) => {
