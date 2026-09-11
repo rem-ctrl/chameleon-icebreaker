@@ -182,29 +182,45 @@ function initDrawingTools() {
     submitMyPainting();
   });
 
-  // Mobile Zoom Widget Controls
+  // Zoom Controls (Toolbar & Floating Widget)
   const zoomInBtn = document.getElementById('btnZoomIn');
   const zoomOutBtn = document.getElementById('btnZoomOut');
   const zoomResetBtn = document.getElementById('btnZoomReset');
   const zoomDisplay = document.getElementById('zoomLevelDisplay');
 
-  if (zoomInBtn) zoomInBtn.addEventListener('click', () => {
+  const tbZoomIn = document.getElementById('toolbarZoomIn');
+  const tbZoomOut = document.getElementById('toolbarZoomOut');
+  const tbZoomReset = document.getElementById('toolbarZoomReset');
+  const tbZoomDisplay = document.getElementById('toolbarZoomDisplay');
+
+  function doZoomIn() {
     chameleonCanvas.zoomIn(0.5);
     if (window.audioManager) window.audioManager.playClick();
-  });
+  }
 
-  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => {
+  function doZoomOut() {
     chameleonCanvas.zoomOut(0.5);
     if (window.audioManager) window.audioManager.playClick();
-  });
+  }
 
-  if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => {
+  function doZoomReset() {
     chameleonCanvas.resetZoom();
     if (window.audioManager) window.audioManager.playClick();
-  });
+  }
+
+  if (zoomInBtn) zoomInBtn.addEventListener('click', doZoomIn);
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', doZoomOut);
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', doZoomReset);
+
+  if (tbZoomIn) tbZoomIn.addEventListener('click', doZoomIn);
+  if (tbZoomOut) tbZoomOut.addEventListener('click', doZoomOut);
+  if (tbZoomReset) tbZoomReset.addEventListener('click', doZoomReset);
 
   chameleonCanvas.onZoomChange = (zm) => {
-    if (zoomDisplay) zoomDisplay.textContent = zm.toFixed(1) + 'x';
+    const formattedPct = Math.round(zm * 100) + '%';
+    const formattedRatio = zm.toFixed(1) + 'x';
+    if (zoomDisplay) zoomDisplay.textContent = formattedPct;
+    if (tbZoomDisplay) tbZoomDisplay.textContent = formattedPct;
   };
 
   chameleonCanvas.onColorPicked = (hex) => {

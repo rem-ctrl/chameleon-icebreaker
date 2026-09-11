@@ -516,12 +516,21 @@ class ChameleonCanvas {
     window.addEventListener('touchend', onEnd, { passive: true });
     window.addEventListener('touchcancel', onEnd, { passive: true });
 
-    // Mouse wheel resizing in POSE mode
+    // Mouse wheel resizing in POSE mode & zoom in PAINT mode
     this.canvas.addEventListener('wheel', (e) => {
       if (this.mode === 'POSE' && !this.pose.locked) {
         e.preventDefault();
         const delta = e.deltaY < 0 ? 0.08 : -0.08;
         this.changeScale(delta);
+      } else if (this.mode === 'PAINT') {
+        e.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.width / rect.width;
+        const scaleY = this.height / rect.height;
+        const viewX = (e.clientX - rect.left) * scaleX;
+        const viewY = (e.clientY - rect.top) * scaleY;
+        const delta = e.deltaY < 0 ? 0.25 : -0.25;
+        this.setZoom(this.zoom + delta, viewX, viewY);
       }
     }, { passive: false });
   }

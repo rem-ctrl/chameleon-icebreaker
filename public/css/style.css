@@ -833,9 +833,48 @@ body.paper-bg {
   transition: background-color 0.08s ease;
 }
 
-.size-preset-btn.active {
+/* Zoom Controls in Toolbar */
+.toolbar-zoom-area {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.zoom-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom-controls-group .zoom-btn {
+  padding: 6px 8px;
+  min-width: 30px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--bg-well);
+  border: var(--border-medium);
+  border-radius: 6px;
+}
+
+.zoom-controls-group .zoom-btn:hover {
   background: var(--accent);
-  border-color: #231f20;
+}
+
+.zoom-scale-badge {
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--bg-well);
+  border: 1.5px solid #231f20;
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 46px;
+  text-align: center;
+  color: var(--text-main);
 }
 
 .toolbar-submit-area {
@@ -1526,9 +1565,9 @@ button,
   user-select: none;
 }
 
-/* Mobile Zoom Widget (Shown on mobile screens when in PAINT mode) */
+/* Mobile Zoom Widget (Shown on canvas when in PAINT mode) */
 .mobile-zoom-widget {
-  display: none;
+  display: flex;
   position: absolute;
   top: 10px;
   right: 10px;
@@ -1542,6 +1581,10 @@ button,
   box-shadow: none;
   pointer-events: auto;
   touch-action: manipulation;
+}
+
+.mobile-zoom-widget.hidden {
+  display: none !important;
 }
 
 .zoom-pill-btn {
