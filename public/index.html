@@ -90,6 +90,40 @@
         <div class="canvas-container">
           <canvas id="gameCanvas" width="1920" height="1080"></canvas>
           
+          <!-- Live Finder Alerts Ticker -->
+          <div id="finderTickerContainer" class="finder-ticker-container"></div>
+
+          <!-- Host Spectator Livestream Hub (Active on Host screen in PAINT mode) -->
+          <div id="hostSpectatorHub" class="spectator-hub-overlay hidden">
+            <div class="spectator-hub-card paper-panel">
+              <div class="hub-header-badge">LIVESTREAM AUDIENCE HUB</div>
+              <h2 class="hub-title">CONTESTANTS ARE CAMOUFLAGING!</h2>
+              <p class="hub-subtitle">Players are selecting poses and secretly painting their disguises on their own screens.</p>
+              
+              <div class="hub-progress-box paper-well">
+                <div class="hub-progress-stats">
+                  <span class="progress-label">Disguises Ready:</span>
+                  <span id="spectatorProgressText" class="progress-count">0 / 0</span>
+                </div>
+                <div class="hub-progress-bar">
+                  <div id="spectatorProgressBarFill" class="hub-progress-fill"></div>
+                </div>
+              </div>
+
+              <div class="hub-player-status-grid" id="spectatorPlayerGrid">
+              </div>
+
+              <div class="hub-streamer-note">
+                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>Spoiler Safe: Drawings are kept completely secret until each player's spotting round!</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Mobile Zoom Overlay (Active in PAINT mode on mobile) -->
           <div id="mobileZoomWidget" class="mobile-zoom-widget hidden">
             <button id="btnZoomIn" class="zoom-pill-btn" aria-label="Zoom In" title="Zoom In">
@@ -397,6 +431,13 @@
       </div>
 
       <div class="lobby-footer-section">
+        <div id="hostSpectatorToggleWrap" class="spectator-toggle-wrap hidden">
+          <label class="spectator-checkbox-label">
+            <input type="checkbox" id="hostSpectatorCheckbox">
+            <span class="custom-checkbox-box"></span>
+            <span class="checkbox-text">Host as Spectator (Livestream Mode &bull; Host does not play)</span>
+          </label>
+        </div>
         <p id="lobbyStatusMsg" class="lobby-status">Waiting for host to start...</p>
         <button id="startGameBtn" class="paper-btn massive-btn primary-btn hidden">
           START GAME!

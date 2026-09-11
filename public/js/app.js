@@ -24,6 +24,7 @@ let myProfile = {
 
 let currentRoom = null;
 let isHost = false;
+let isSpectator = false;
 let chameleonCanvas = null;
 let currentSceneId = 'random';
 
@@ -601,50 +602,102 @@ function bindSocketEvents() {
     socket.emit('play_again');
   });
 
+  const specToggleWrap = document.getElementById('hostSpectatorToggleWrap');
+  const specCheckbox = document.getElementById('hostSpectatorCheckbox');
+
+  if (specCheckbox) {
+    specCheckbox.addEventListener('change', (e) => {
+      if (isHost && currentRoom) {
+        socket.emit('toggle_host_spectator', { isSpectator: e.target.checked });
+      }
+    });
+  }
+
   socket.on('room_updated', (data) => {
+    if (specToggleWrap) {
+      if (isHost) {
+        specToggleWrap.classList.remove('hidden');
+      } else {
+        specToggleWrap.classList.add('hidden');
+      }
+    }
+    if (specCheckbox && data && data.hostIsSpectator !== undefined) {
+      specCheckbox.checked = !!data.hostIsSpectator;
+    }
+    if (isHost && data && data.hostIsSpectator !== undefined) {
+      isSpectator = !!data.hostIsSpectator;
+    }
+
     updateScoreboard(data);
     updateLobby(data);
+
+    if (isSpectator && data.state === 'PAINTING') {
+      updateSpectatorHub(data);
+    }
   });
 
   socket.on('game_started', (data) => {
     document.getElementById('lobbyOverlay').classList.add('hidden');
     document.getElementById('podiumOverlay').classList.add('hidden');
-    document.getElementById('poseRibbon').classList.remove('hidden');
-    document.getElementById('drawingToolbar').classList.add('hidden');
-    document.getElementById('guessPromptRibbon').classList.add('hidden');
+    const spectatorHub = document.getElementById('hostSpectatorHub');
     const zoomWidget = document.getElementById('mobileZoomWidget');
     if (zoomWidget) zoomWidget.classList.add('hidden');
 
-    // Re-enable drawing tools for new match
-    document.querySelectorAll('#drawingToolbar button').forEach(btn => {
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      btn.style.pointerEvents = 'auto';
-    });
-    const customPicker = document.getElementById('customColorPicker');
-    if (customPicker) customPicker.disabled = false;
+    const amISpectator = (data && data.isHostSpectator) || (isHost && isSpectator);
+    isSpectator = amISpectator;
 
-    document.getElementById('phasePill').textContent = 'POSE';
-    document.getElementById('gameStatusText').textContent = 'Drag & pose your figure on the canvas';
+    if (amISpectator) {
+      document.getElementById('poseRibbon').classList.add('hidden');
+      document.getElementById('drawingToolbar').classList.add('hidden');
+      document.getElementById('guessPromptRibbon').classList.add('hidden');
+      if (spectatorHub) spectatorHub.classList.remove('hidden');
 
-    const submitBtn = document.getElementById('submitEarlyBtn');
-    if (submitBtn) {
-      submitBtn.innerHTML = `
-        <div class="btn-content-wrap">
-          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          <span>I'M HIDDEN!</span>
-        </div>
-      `;
-      submitBtn.disabled = false;
+      document.getElementById('phasePill').textContent = 'STREAM HUB';
+      document.getElementById('gameStatusText').textContent = 'Contestants are camouflaging their figures secretly...';
+
+      const bgImage = (data && (data.backgroundImage || data.room?.backgroundImage)) || null;
+      const sceneKey = (data && (data.sceneId || data.room?.sceneId)) || currentSceneId;
+      currentSceneId = sceneKey;
+
+      chameleonCanvas.resetAll(bgImage || currentSceneId);
+      if (data.room) updateSpectatorHub(data.room);
+    } else {
+      if (spectatorHub) spectatorHub.classList.add('hidden');
+      document.getElementById('poseRibbon').classList.remove('hidden');
+      document.getElementById('drawingToolbar').classList.add('hidden');
+      document.getElementById('guessPromptRibbon').classList.add('hidden');
+
+      // Re-enable drawing tools for new match
+      document.querySelectorAll('#drawingToolbar button').forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+      });
+      const customPicker = document.getElementById('customColorPicker');
+      if (customPicker) customPicker.disabled = false;
+
+      document.getElementById('phasePill').textContent = 'POSE';
+      document.getElementById('gameStatusText').textContent = 'Drag & pose your figure on the canvas';
+
+      const submitBtn = document.getElementById('submitEarlyBtn');
+      if (submitBtn) {
+        submitBtn.innerHTML = `
+          <div class="btn-content-wrap">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>I'M HIDDEN!</span>
+          </div>
+        `;
+        submitBtn.disabled = false;
+      }
+
+      const bgImage = (data && (data.backgroundImage || data.room?.backgroundImage)) || null;
+      const sceneKey = (data && (data.sceneId || data.room?.sceneId)) || currentSceneId;
+      currentSceneId = sceneKey;
+
+      chameleonCanvas.resetAll(bgImage || currentSceneId);
     }
-
-    const bgImage = (data && (data.backgroundImage || data.room?.backgroundImage)) || null;
-    const sceneKey = (data && (data.sceneId || data.room?.sceneId)) || currentSceneId;
-    currentSceneId = sceneKey;
-
-    chameleonCanvas.resetAll(bgImage || currentSceneId);
 
     if (window.audioManager) window.audioManager.playSuccess();
   });
@@ -668,14 +721,20 @@ function bindSocketEvents() {
   });
 
   socket.on('painting_time_up', () => {
-    submitMyPainting();
+    if (!isSpectator) {
+      submitMyPainting();
+    }
   });
 
   socket.on('time_up_paint', () => {
-    submitMyPainting();
+    if (!isSpectator) {
+      submitMyPainting();
+    }
   });
 
   socket.on('start_guess_round', (data) => {
+    const spectatorHub = document.getElementById('hostSpectatorHub');
+    if (spectatorHub) spectatorHub.classList.add('hidden');
     document.getElementById('poseRibbon').classList.add('hidden');
     document.getElementById('drawingToolbar').classList.add('hidden');
     document.getElementById('guessPromptRibbon').classList.remove('hidden');
@@ -684,13 +743,22 @@ function bindSocketEvents() {
 
     const isMyDrawing = data.artistId === socket.id;
 
-    if (isMyDrawing) {
+    if (isSpectator) {
+      document.getElementById('phasePill').textContent = 'SPOT ' + data.roundIndex + '/' + data.totalRounds;
+      document.getElementById('gameStatusText').textContent = `Spotting ${data.artistName}'s hidden figure!`;
+      const promptBanner = document.querySelector('#guessPromptRibbon .guess-hint-text span');
+      if (promptBanner) {
+        promptBanner.textContent = `Broadcasting ${data.artistName}'s disguise to the livestream! Watch classmates search live.`;
+      }
+      chameleonCanvas.setGuessImage(data.imageData, true);
+    } else if (isMyDrawing) {
       document.getElementById('phasePill').textContent = 'YOUR ART ' + data.roundIndex + '/' + data.totalRounds;
       document.getElementById('gameStatusText').textContent = 'This is your camouflage drawing! Watch your classmates search.';
       const promptBanner = document.querySelector('#guessPromptRibbon .guess-hint-text span');
       if (promptBanner) {
         promptBanner.textContent = 'This is your disguised figure! Sit back and see how many classmates you can fool.';
       }
+      chameleonCanvas.setGuessImage(data.imageData, true);
     } else {
       document.getElementById('phasePill').textContent = 'SPOT ' + data.roundIndex + '/' + data.totalRounds;
       document.getElementById('gameStatusText').textContent = `Spot ${data.artistName}'s hidden figure!`;
@@ -698,16 +766,17 @@ function bindSocketEvents() {
       if (promptBanner) {
         promptBanner.textContent = 'Click anywhere on the canvas to spot the hidden figure! (-25 pts penalty for wrong guesses)';
       }
+      chameleonCanvas.setGuessImage(data.imageData, false);
+      chameleonCanvas.onGuessClick = (coords) => {
+        socket.emit('submit_guess', coords);
+      };
     }
 
-    chameleonCanvas.setGuessImage(data.imageData, isMyDrawing);
-    chameleonCanvas.onGuessClick = (coords) => {
-      if (!isMyDrawing) {
-        socket.emit('submit_guess', coords);
-      }
-    };
-
     if (window.audioManager) window.audioManager.playPop();
+  });
+
+  socket.on('player_found', (data) => {
+    showFinderTicker(data);
   });
 
   socket.on('guess_feedback', (fb) => {
@@ -730,6 +799,8 @@ function bindSocketEvents() {
   });
 
   socket.on('game_over', (data) => {
+    const spectatorHub = document.getElementById('hostSpectatorHub');
+    if (spectatorHub) spectatorHub.classList.add('hidden');
     document.getElementById('poseRibbon').classList.add('hidden');
     document.getElementById('drawingToolbar').classList.add('hidden');
     document.getElementById('guessPromptRibbon').classList.add('hidden');
@@ -756,6 +827,8 @@ function bindSocketEvents() {
   });
 
   socket.on('return_to_lobby', () => {
+    const spectatorHub = document.getElementById('hostSpectatorHub');
+    if (spectatorHub) spectatorHub.classList.add('hidden');
     document.getElementById('podiumOverlay').classList.add('hidden');
     document.getElementById('lobbyOverlay').classList.remove('hidden');
     document.getElementById('phasePill').textContent = 'LOBBY';
@@ -767,8 +840,67 @@ function bindSocketEvents() {
   });
 }
 
+function showFinderTicker(data) {
+  const container = document.getElementById('finderTickerContainer');
+  if (!container) return;
+
+  const chip = document.createElement('div');
+  chip.className = 'finder-ticker-chip';
+  chip.innerHTML = `
+    <span class="ticker-trophy-star">&#x2605;</span>
+    <span><b>${escapeHTML(data.finderName)}</b> found it! (#${data.rank} Place, +${data.points} pts)</span>
+  `;
+  container.appendChild(chip);
+
+  if (window.audioManager) window.audioManager.playPop();
+
+  setTimeout(() => {
+    chip.classList.add('fade-out');
+    setTimeout(() => {
+      if (chip.parentNode) chip.parentNode.removeChild(chip);
+    }, 400);
+  }, 3200);
+}
+
+function updateSpectatorHub(roomData) {
+  const grid = document.getElementById('spectatorPlayerGrid');
+  const countText = document.getElementById('spectatorProgressText');
+  const barFill = document.getElementById('spectatorProgressBarFill');
+  if (!grid || !roomData) return;
+
+  const contestants = (roomData.players || []).filter(p => !p.isSpectator);
+  const submittedCount = contestants.filter(p => p.submitted).length;
+  const totalCount = contestants.length;
+
+  if (countText) countText.textContent = `${submittedCount} / ${totalCount}`;
+  if (barFill) {
+    const pct = totalCount > 0 ? (submittedCount / totalCount) * 100 : 0;
+    barFill.style.width = pct + '%';
+  }
+
+  grid.innerHTML = '';
+  contestants.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'hub-player-card' + (p.submitted ? ' ready' : '');
+    const avatarColor = (p.avatar && p.avatar.color) || '#e76f51';
+    const avatarShape = (p.avatar && p.avatar.shape) ? p.avatar.shape : 'star';
+    const avatarSvg = AVATAR_SHAPES[avatarShape] || AVATAR_SHAPES.star;
+
+    card.innerHTML = `
+      <div class="hub-player-avatar-chip" style="background: ${avatarColor};">
+        <span style="width:20px; height:20px; display:inline-flex;">${avatarSvg}</span>
+      </div>
+      <div class="hub-player-name">${escapeHTML(p.name)}</div>
+      <div class="hub-player-badge ${p.submitted ? 'ready' : 'painting'}">
+        ${p.submitted ? 'HIDDEN' : 'PAINTING...'}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
 function submitMyPainting() {
-  if (!chameleonCanvas) return;
+  if (!chameleonCanvas || isSpectator) return;
   const submitBtn = document.getElementById('submitEarlyBtn');
   if (submitBtn) {
     submitBtn.textContent = 'Submitted!';
@@ -806,7 +938,8 @@ function updateScoreboard(roomData) {
   if (!list) return;
 
   if (countBadge) {
-    countBadge.textContent = roomData.players.length + '/20';
+    const activeContestants = (roomData.players || []).filter(p => !p.isSpectator);
+    countBadge.textContent = activeContestants.length + '/20';
   }
 
   list.innerHTML = '';
@@ -814,26 +947,25 @@ function updateScoreboard(roomData) {
 
   sorted.forEach((p, idx) => {
     const card = document.createElement('div');
-    card.className = 'player-card' + (p.isArtist ? ' is-artist' : '') + (p.hasGuessed ? ' has-guessed' : '');
+    card.className = 'player-card' + (p.isArtist ? ' is-artist' : '') + (p.hasGuessed ? ' has-guessed' : '') + (p.isSpectator ? ' is-spectator' : '');
 
     const avatarColor = (p.avatar && p.avatar.color) || '#e76f51';
     const avatarShape = (p.avatar && p.avatar.shape) ? p.avatar.shape : 'star';
     const avatarSvg = AVATAR_SHAPES[avatarShape] || AVATAR_SHAPES.star;
 
     card.innerHTML = `
-      <div class="player-rank">#${idx + 1}</div>
+      <div class="player-rank">${p.isSpectator ? 'HOST' : '#' + (idx + 1)}</div>
       <div class="player-avatar-chip" style="background: ${avatarColor};">
         <span style="width:20px; height:20px; display:inline-flex;">${avatarSvg}</span>
       </div>
       <div class="player-info">
         <div class="player-name">
           ${escapeHTML(p.name)}
-          ${p.isHost ? '<span class="host-badge">HOST</span>' : ''}
+          ${p.isHost ? '<span class="host-badge">' + (p.isSpectator ? 'STREAMER' : 'HOST') + '</span>' : ''}
         </div>
-        <div class="player-score">${p.score} pts</div>
+        <div class="player-score">${p.isSpectator ? 'Spectating' : p.score + ' pts'}</div>
       </div>
-      ${p.hasGuessed ? '<div class="player-status-badge">FOUND!</div>' : ''}
-      ${p.submitted && roomData.state === 'PAINTING' ? '<div class="player-status-badge ready">READY</div>' : ''}
+      ${p.isSpectator ? '<div class="player-status-badge spectator">SPECTATOR</div>' : (p.hasGuessed ? '<div class="player-status-badge">FOUND!</div>' : (p.submitted && roomData.state === 'PAINTING' ? '<div class="player-status-badge ready">READY</div>' : ''))}
     `;
     list.appendChild(card);
   });

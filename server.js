@@ -62,6 +62,7 @@ function getSafeRoomData(room) {
     code: room.code,
     state: room.state,
     hostId: room.hostId,
+    hostIsSpectator: !!room.hostIsSpectator,
     sceneId: room.sceneId || 'jungle',
     backgroundImage: room.backgroundImage || null,
     timeLeft: room.timeLeft,
@@ -74,6 +75,7 @@ function getSafeRoomData(room) {
       avatar: p.avatar,
       score: p.score,
       isHost: p.id === room.hostId,
+      isSpectator: !!p.isSpectator,
       submitted: p.submitted,
       hasGuessed: p.hasGuessed,
       isArtist: room.currentSubmission ? room.currentSubmission.artistId === p.id : false,
@@ -132,6 +134,7 @@ io.on('connection', (socket) => {
     const room = {
       code,
       hostId: socket.id,
+      hostIsSpectator: false,
       sceneId,
       backgroundImage: initialBg,
       state: 'LOBBY',
@@ -151,6 +154,7 @@ io.on('connection', (socket) => {
       name: playerName,
       avatar,
       score: 0,
+      isSpectator: false,
       submitted: false,
       hasGuessed: false,
       lastPoints: 0
@@ -196,6 +200,7 @@ io.on('connection', (socket) => {
       name: playerName,
       avatar,
       score: 0,
+      isSpectator: false,
       submitted: false,
       hasGuessed: false,
       lastPoints: 0
@@ -216,6 +221,17 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('toggle_host_spectator', (data) => {
+    if (!currentRoomCode) return;
+    const room = rooms.get(currentRoomCode);
+    if (!room || room.hostId !== socket.id || room.state !== 'LOBBY') return;
+    room.hostIsSpectator = !!(data && data.isSpectator);
+    const hostP = room.players.get(socket.id);
+    if (hostP) {
+      hostP.isSpectator = room.hostIsSpectator;
+    }
+    io.to(room.code).emit('room_updated', getSafeRoomData(room));
+  });
 
   socket.on('start_game', () => {
     if (!currentRoomCode) return;
@@ -243,6 +259,12 @@ io.on('connection', (socket) => {
       p.hasGuessed = false;
       p.lastPoints = 0;
 
+      const isThisHostSpectator = (p.id === room.hostId && room.hostIsSpectator);
+      p.isSpectator = isThisHostSpectator;
+      if (isThisHostSpectator) {
+        p.submitted = true;
+      }
+
       let playerBg = null;
       if (shuffledBgs.length > 0) {
         playerBg = shuffledBgs[bgIdx % shuffledBgs.length];
@@ -257,6 +279,7 @@ io.on('connection', (socket) => {
         playerSocket.emit('game_started', {
           duration: paintDuration,
           backgroundImage: playerBg,
+          isHostSpectator: isThisHostSpectator,
           room: getSafeRoomData(room)
         });
       }
@@ -299,7 +322,7 @@ io.on('connection', (socket) => {
     if (!room || room.state !== 'PAINTING') return;
 
     const player = room.players.get(socket.id);
-    if (!player || player.submitted) return;
+    if (!player || player.submitted || player.isSpectator) return;
 
     player.submitted = true;
 
@@ -318,7 +341,8 @@ io.on('connection', (socket) => {
       text: '[READY] ' + player.name + ' finished camouflaging their figure.'
     });
 
-    const allSubmitted = Array.from(room.players.values()).every(p => p.submitted);
+    const activeContestants = Array.from(room.players.values()).filter(p => !p.isSpectator);
+    const allSubmitted = activeContestants.length > 0 && activeContestants.every(p => p.submitted);
     if (allSubmitted && room.submissions.length > 0) {
       clearRoomTimers(room);
       io.to(room.code).emit('chat_message', {
@@ -329,19 +353,19 @@ io.on('connection', (socket) => {
     }
   });
 
-
   function startGuessingPhase(room) {
     clearRoomTimers(room);
 
-    // Auto-create fallback submissions for any connected players who haven't submitted
+    // Auto-create fallback submissions for any connected contestants who haven't submitted
     room.players.forEach(p => {
+      if (p.isSpectator) return;
       const alreadySub = room.submissions.some(s => s.artistId === p.id);
       if (!alreadySub) {
         room.submissions.push({
           artistId: p.id,
           artistName: p.name,
           artistAvatar: p.avatar,
-          imageData: room.backgroundImage || '/assets/backgrounds/images.jpg',
+          imageData: p.assignedBackground || room.backgroundImage || '/assets/backgrounds/images.jpg',
           poseData: { poseId: 'normalstand', x: 0.5, y: 0.5, width: 0.22, height: 0.38, rotation: 0, flipX: false },
           sceneId: room.sceneId || 'jungle'
         });
@@ -420,7 +444,7 @@ io.on('connection', (socket) => {
     if (!room || room.state !== 'GUESSING' || !room.currentSubmission) return;
 
     const player = room.players.get(socket.id);
-    if (!player) return;
+    if (!player || player.isSpectator) return;
 
     if (socket.id === room.currentSubmission.artistId) {
       socket.emit('guess_feedback', { isArtist: true, message: 'You painted this! Watch others search for your disguise.' });
@@ -470,6 +494,15 @@ io.on('connection', (socket) => {
         clickY: data.y
       });
 
+      // Broadcast live finding celebration event to all room clients & spectator screen!
+      io.to(room.code).emit('player_found', {
+        finderId: player.id,
+        finderName: player.name,
+        finderAvatar: player.avatar,
+        rank,
+        points: earnedPoints
+      });
+
       io.to(room.code).emit('chat_message', {
         system: true,
         highlight: true,
@@ -484,8 +517,8 @@ io.on('connection', (socket) => {
         io.to(room.code).emit('timer_tick', { timeLeft: room.timeLeft, totalTime: room.totalTime });
       }
 
-      const eligibleGuessers = Array.from(room.players.values()).filter(p => p.id !== room.currentSubmission.artistId);
-      const allFound = eligibleGuessers.every(p => p.hasGuessed);
+      const eligibleGuessers = Array.from(room.players.values()).filter(p => !p.isSpectator && p.id !== room.currentSubmission.artistId);
+      const allFound = eligibleGuessers.length > 0 && eligibleGuessers.every(p => p.hasGuessed);
       if (allFound) {
         clearInterval(room.timerInterval);
         room.timerInterval = null;
@@ -508,7 +541,6 @@ io.on('connection', (socket) => {
     }
   });
 
-
   function finishCurrentGuessRound(room) {
     clearRoomTimers(room);
     room.state = 'REVEAL';
@@ -517,7 +549,7 @@ io.on('connection', (socket) => {
     const artist = room.players.get(sub.artistId);
     
     let artistBonus = 0;
-    const eligibleCount = Math.max(1, room.players.size - 1);
+    const eligibleCount = Math.max(1, Array.from(room.players.values()).filter(p => !p.isSpectator && p.id !== sub.artistId).length);
     const foundCount = room.roundFinders.length;
     const missedCount = eligibleCount - foundCount;
 
@@ -550,12 +582,12 @@ io.on('connection', (socket) => {
     }, 4500);
   }
 
-
   function showPodium(room) {
     clearRoomTimers(room);
     room.state = 'PODIUM';
 
     const sortedPlayers = Array.from(room.players.values())
+      .filter(p => !p.isSpectator)
       .sort((a, b) => b.score - a.score);
 
     io.to(room.code).emit('game_over', {
