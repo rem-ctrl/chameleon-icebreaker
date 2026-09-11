@@ -292,17 +292,28 @@ class ChameleonCanvas {
     this.panY = Math.min(0, Math.max(minPanY, this.panY));
   }
 
-  setZoom(newZoom, centerX = this.width / 2, centerY = this.height / 2) {
-    const oldZoom = this.zoom;
+  setZoom(newZoom, centerX, centerY) {
     newZoom = Math.max(1.0, Math.min(3.5, Math.round(newZoom * 10) / 10));
-    if (newZoom === oldZoom) return;
+    if (newZoom <= 1.0) {
+      this.resetZoom();
+      return;
+    }
 
-    const modelX = (centerX - this.panX) / oldZoom;
-    const modelY = (centerY - this.panY) / oldZoom;
+    if (centerX === undefined || centerY === undefined) {
+      // Automatically lock zoom centered onto the humanoid figure!
+      this.zoom = newZoom;
+      this.panX = (this.width / 2) - (this.pose.x * this.zoom);
+      this.panY = (this.height / 2) - (this.pose.y * this.zoom);
+    } else {
+      const oldZoom = this.zoom;
+      if (newZoom === oldZoom) return;
+      const modelX = (centerX - this.panX) / oldZoom;
+      const modelY = (centerY - this.panY) / oldZoom;
+      this.zoom = newZoom;
+      this.panX = centerX - modelX * newZoom;
+      this.panY = centerY - modelY * newZoom;
+    }
 
-    this.zoom = newZoom;
-    this.panX = centerX - modelX * newZoom;
-    this.panY = centerY - modelY * newZoom;
     this.clampPan();
     this.render();
     if (this.onZoomChange) this.onZoomChange(this.zoom);
@@ -516,21 +527,12 @@ class ChameleonCanvas {
     window.addEventListener('touchend', onEnd, { passive: true });
     window.addEventListener('touchcancel', onEnd, { passive: true });
 
-    // Mouse wheel resizing in POSE mode & zoom in PAINT mode
+    // Mouse wheel resizing in POSE mode ONLY
     this.canvas.addEventListener('wheel', (e) => {
       if (this.mode === 'POSE' && !this.pose.locked) {
         e.preventDefault();
         const delta = e.deltaY < 0 ? 0.08 : -0.08;
         this.changeScale(delta);
-      } else if (this.mode === 'PAINT') {
-        e.preventDefault();
-        const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.width / rect.width;
-        const scaleY = this.height / rect.height;
-        const viewX = (e.clientX - rect.left) * scaleX;
-        const viewY = (e.clientY - rect.top) * scaleY;
-        const delta = e.deltaY < 0 ? 0.25 : -0.25;
-        this.setZoom(this.zoom + delta, viewX, viewY);
       }
     }, { passive: false });
   }

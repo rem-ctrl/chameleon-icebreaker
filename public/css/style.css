@@ -833,9 +833,9 @@ body.paper-bg {
   transition: background-color 0.08s ease;
 }
 
-/* Zoom Controls in Toolbar */
+/* Zoom Controls in Toolbar (Mobile Only) */
 .toolbar-zoom-area {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
@@ -1565,9 +1565,9 @@ button,
   user-select: none;
 }
 
-/* Mobile Zoom Widget (Shown on canvas when in PAINT mode) */
+/* Mobile Zoom Widget (Shown on canvas when in PAINT mode ONLY on mobile) */
 .mobile-zoom-widget {
-  display: flex;
+  display: none;
   position: absolute;
   top: 10px;
   right: 10px;
@@ -1638,8 +1638,12 @@ button,
     overflow-x: hidden;
   }
 
+  .toolbar-zoom-area {
+    display: flex !important;
+  }
+
   .mobile-zoom-widget:not(.hidden) {
-    display: flex;
+    display: flex !important;
   }
 
   .game-header {
